@@ -38,9 +38,13 @@ def index():
 def success(name):
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    
-    comments = Comment.query.all()
-    return render_template('forum.html', name=name, comments=comments)
+
+    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
+    if user:
+        comments = Comment.query.all()  # Get all comments
+        return render_template('forum.html', name=user.username, comments=comments)
+    else:
+        return "User not found", 404
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
