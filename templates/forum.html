@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forum Grzybiarzy</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .comment {
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .signout-btn {
+            display: inline-block;
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .signout-btn:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <h1>Witaj na Forum Grzybiarzy, {{ name }}!</h1>
+
+    <a href="{{ url_for('logout') }}" class="signout-btn">Wyloguj się</a>
+
+    <form action="/add_comment" method="post">
+        <h2>Dodaj wpis:</h2>
+        <textarea name="content" rows="5" style="width: 100%;" placeholder="Wpisz tutaj swoje przemyślenia..." required></textarea>
+        <input type="submit" value="Wyślij" style="margin-top: 10px;">
+    </form>
+
+    <h2>Poprzednie wpisy:</h2>
+    {% for comment in comments %}
+    <div class="comment">
+        <strong>{{ comment['username'] }}:</strong> {{ comment['content'] }}
+    </div>
+    {% endfor %}
+</body>
+</html>
