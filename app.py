@@ -66,15 +66,16 @@ def login():
 def add_comment():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    
-    content = request.form['content']
-    user_id = session['user_id']
 
-    new_comment = Comment(user_id=user_id, content=content)
+    content = request.form['content']
+    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
+
+    # Add new comment to the database
+    new_comment = Comment(user_id=user.id, content=content)
     db.session.add(new_comment)
     db.session.commit()
 
-    return redirect(url_for('success', name=session['user_id']))
+    return redirect(url_for('success', name=user.username))
 
 @app.route('/logout')
 def logout():
