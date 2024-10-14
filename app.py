@@ -12,7 +12,7 @@ username = os.getenv('DATABASE_USER')
 password = os.getenv('DATABASE_PASSWORD')
 driver = '{ODBC Driver 17 for SQL Server}'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f'mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_SERVER')}/{os.getenv('DATABASE_NAME')}?driver=ODBC+Driver+17+for+SQL+Server"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
