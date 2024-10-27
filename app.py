@@ -1,10 +1,34 @@
+import os
 from flask import Flask, render_template, redirect, url_for, request, session
+from flask_sqlalchemy import SQLAlchemy
+import pyodbc
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-users = {'user1': 'password1', 'user2': 'password2'}
-comments = []
+server = os.getenv('DATABASE_SERVER')
+database = os.getenv('DATABASE_NAME')
+username = os.getenv('DATABASE_USER')
+password = os.getenv('DATABASE_PASSWORD')
+driver = '{ODBC Driver 17 for SQL Server}'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_SERVER')}/{os.getenv('DATABASE_NAME')}?driver=ODBC+Driver+17+for+SQL+Server"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    content = db.Column(db.String(255), nullable=False)
+    user = db.relationship('User', backref=db.backref('comments', lazy=True))
 
 @app.route('/')
 def index():
@@ -14,8 +38,13 @@ def index():
 def success(name):
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    
-    return render_template('forum.html', name=name, comments=comments)
+
+    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
+    if user:
+        comments = Comment.query.all()  # Get all comments
+        return render_template('forum.html', name=user.username, comments=comments)
+    else:
+        return "User not found", 404
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -23,8 +52,10 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        if username in users and users[username] == password:
-            session['user_id'] = username
+        user = User.query.filter_by(username=username, password=password).first()
+
+        if user:
+            session['user_id'] = user.id
             return redirect(url_for('success', name=username))
         else:
             return "Invalid credentials, please try again."
@@ -35,13 +66,16 @@ def login():
 def add_comment():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    
+
     content = request.form['content']
-    username = session['user_id']
+    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
 
-    comments.append({'username': username, 'content': content})
+    # Add new comment to the database
+    new_comment = Comment(user_id=user.id, content=content)
+    db.session.add(new_comment)
+    db.session.commit()
 
-    return redirect(url_for('success', name=username))
+    return redirect(url_for('success', name=user.username))
 
 @app.route('/logout')
 def logout():
