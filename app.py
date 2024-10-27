@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from flask import Flask, render_template, redirect, url_for, request, session
 from flask_sqlalchemy import SQLAlchemy
 import pyodbc
@@ -6,13 +7,17 @@ import pyodbc
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+# Set session timeout to 5 minutes
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=5)
+
+# Database configuration
 server = os.getenv('DATABASE_SERVER')
 database = os.getenv('DATABASE_NAME')
 username = os.getenv('DATABASE_USER')
 password = os.getenv('DATABASE_PASSWORD')
 driver = '{ODBC Driver 17 for SQL Server}'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_SERVER')}/{os.getenv('DATABASE_NAME')}?driver=ODBC+Driver+17+for+SQL+Server"
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc://{username}:{password}@{server}/{database}?driver=ODBC+Driver+17+for+SQL+Server"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -39,9 +44,9 @@ def success(name):
     if 'user_id' not in session:
         return redirect(url_for('index'))
 
-    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
+    user = User.query.filter_by(id=session['user_id']).first()
     if user:
-        comments = Comment.query.all()  # Get all comments
+        comments = Comment.query.all()
         return render_template('forum.html', name=user.username, comments=comments)
     else:
         return "User not found", 404
@@ -55,6 +60,7 @@ def login():
         user = User.query.filter_by(username=username, password=password).first()
 
         if user:
+            session.permanent = True  # Set session as permanent to use the timeout
             session['user_id'] = user.id
             return redirect(url_for('success', name=username))
         else:
@@ -68,9 +74,8 @@ def add_comment():
         return redirect(url_for('index'))
 
     content = request.form['content']
-    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
+    user = User.query.filter_by(id=session['user_id']).first()
 
-    # Add new comment to the database
     new_comment = Comment(user_id=user.id, content=content)
     db.session.add(new_comment)
     db.session.commit()
