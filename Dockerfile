@@ -1,12 +1,25 @@
-# Use the official Python 3.8 image
-FROM python:3.8-slim
-# Set the working directory to /app
+# Base image
+FROM python:3.8
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y curl apt-transport-https gnupg && \
+    curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
+    curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y msodbcsql17 unixodbc-dev && \
+    apt-get clean -y
+
+# Set working directory
 WORKDIR /app
-# Copy the current directory contents into the container at /app
-COPY . /app
-# Install the dependencies specified in requirements.txt
+
+# Copy requirements file and install dependencies
+COPY requirements.txt .
 RUN pip install -r requirements.txt
-# Expose port 3000 for the Flask app
+
+# Copy the rest of the application code
+COPY . .
+
+# Expose the port and run the application
 EXPOSE 3000
-# Command to run the Flask application
-CMD python ./app.py
+CMD ["python", "app.py"]
