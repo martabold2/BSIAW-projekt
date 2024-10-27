@@ -1,40 +1,11 @@
-import os
-from datetime import timedelta
 from flask import Flask, render_template, redirect, url_for, request, session
-from flask_sqlalchemy import SQLAlchemy
-import pyodbc
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
-# Database configuration using environment variables
-server = os.getenv('DATABASE_SERVER')
-database = os.getenv('DATABASE_NAME')
-username = os.getenv('DATABASE_USER')
-password = os.getenv('DATABASE_PASSWORD')
-driver = '{ODBC Driver 17 for SQL Server}'
+users = {'user1': 'password1', 'user2': 'password2'}
+comments = []
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f'mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=5)  # Set session timeout to 5 minutes
-
-db = SQLAlchemy(app)
-
-# Define models
-class User(db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), nullable=False)
-    password = db.Column(db.String(255), nullable=False)
-
-class Comment(db.Model):
-    __tablename__ = 'comments'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.String(255), nullable=False)
-    user = db.relationship('User', backref=db.backref('comments', lazy=True))
-
-# Routes
 @app.route('/')
 def index():
     return render_template('login.html')
@@ -43,8 +14,7 @@ def index():
 def success(name):
     if 'user_id' not in session:
         return redirect(url_for('index'))
-
-    comments = Comment.query.all()
+    
     return render_template('forum.html', name=name, comments=comments)
 
 @app.route('/login', methods=['POST', 'GET'])
@@ -53,12 +23,8 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        # Check if the user exists in the database
-        user = User.query.filter_by(username=username, password=password).first()
-
-        if user:
-            session.permanent = True  # Enable session timeout
-            session['user_id'] = user.id  # Store user ID in session
+        if username in users and users[username] == password:
+            session['user_id'] = username
             return redirect(url_for('success', name=username))
         else:
             return "Invalid credentials, please try again."
@@ -71,14 +37,11 @@ def add_comment():
         return redirect(url_for('index'))
     
     content = request.form['content']
-    user_id = session['user_id']
+    username = session['user_id']
 
-    # Add new comment to the database
-    new_comment = Comment(user_id=user_id, content=content)
-    db.session.add(new_comment)
-    db.session.commit()
+    comments.append({'username': username, 'content': content})
 
-    return redirect(url_for('success', name=session.get('user_id')))
+    return redirect(url_for('success', name=username))
 
 @app.route('/logout')
 def logout():
