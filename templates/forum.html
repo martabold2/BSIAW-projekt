@@ -63,7 +63,7 @@
     <h2>Poprzednie wpisy:</h2>
     {% for comment in comments %}
     <div class="comment">
-        <strong>{{ comment.user.username }}:</strong> {{ comment.content }}
+        <strong>{{ comment['username'] }}:</strong> {{ comment['content'] }}
     </div>
     {% endfor %}
 </body>

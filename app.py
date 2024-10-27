@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta, datetime
 from flask import Flask, render_template, redirect, url_for, request, session
 from flask_sqlalchemy import SQLAlchemy
 import pyodbc
@@ -12,7 +13,7 @@ username = os.getenv('DATABASE_USER')
 password = os.getenv('DATABASE_PASSWORD')
 driver = '{ODBC Driver 17 for SQL Server}'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc://{os.getenv('DATABASE_USER')}:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_SERVER')}/{os.getenv('DATABASE_NAME')}?driver=ODBC+Driver+17+for+SQL+Server"
+app.config['SQLALCHEMY_DATABASE_URI'] = f'mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -30,6 +31,22 @@ class Comment(db.Model):
     content = db.Column(db.String(255), nullable=False)
     user = db.relationship('User', backref=db.backref('comments', lazy=True))
 
+@app.before_request
+def session_management():
+    # Set session to be permanent
+    session.permanent = True
+    # Check if user is logged in and if last activity timestamp exists
+    if 'user_id' in session:
+        if 'last_activity' in session:
+            last_activity = session['last_activity']
+            # Calculate time difference
+            if datetime.now() - last_activity > app.permanent_session_lifetime:
+                # Logout user if the session has expired
+                session.pop('user_id', None)
+                return redirect(url_for('index'))
+        # Update last activity time
+        session['last_activity'] = datetime.now()
+
 @app.route('/')
 def index():
     return render_template('login.html')
@@ -38,13 +55,9 @@ def index():
 def success(name):
     if 'user_id' not in session:
         return redirect(url_for('index'))
-
-    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
-    if user:
-        comments = Comment.query.all()  # Get all comments
-        return render_template('forum.html', name=user.username, comments=comments)
-    else:
-        return "User not found", 404
+    
+    comments = Comment.query.all()
+    return render_template('forum.html', name=name, comments=comments)
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
@@ -66,16 +79,15 @@ def login():
 def add_comment():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-
+    
     content = request.form['content']
-    user = User.query.filter_by(id=session['user_id']).first()  # Fetch the user by user_id
+    user_id = session['user_id']
 
-    # Add new comment to the database
-    new_comment = Comment(user_id=user.id, content=content)
+    new_comment = Comment(user_id=user_id, content=content)
     db.session.add(new_comment)
     db.session.commit()
 
-    return redirect(url_for('success', name=user.username))
+    return redirect(url_for('success', name=session['user_id']))
 
 @app.route('/logout')
 def logout():
