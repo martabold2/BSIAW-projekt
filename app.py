@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta, datetime
+from datetime import timedelta
 from flask import Flask, render_template, redirect, url_for, request, session
 from flask_sqlalchemy import SQLAlchemy
 import pyodbc
@@ -7,6 +7,7 @@ import pyodbc
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'
 
+# Database configuration using environment variables
 server = os.getenv('DATABASE_SERVER')
 database = os.getenv('DATABASE_NAME')
 username = os.getenv('DATABASE_USER')
@@ -15,9 +16,11 @@ driver = '{ODBC Driver 17 for SQL Server}'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mssql+pyodbc://{username}:{password}@{server}/{database}?driver={driver}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=5)  # Set session timeout to 5 minutes
 
 db = SQLAlchemy(app)
 
+# Define models
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -31,22 +34,7 @@ class Comment(db.Model):
     content = db.Column(db.String(255), nullable=False)
     user = db.relationship('User', backref=db.backref('comments', lazy=True))
 
-@app.before_request
-def session_management():
-    # Set session to be permanent
-    session.permanent = True
-    # Check if user is logged in and if last activity timestamp exists
-    if 'user_id' in session:
-        if 'last_activity' in session:
-            last_activity = session['last_activity']
-            # Calculate time difference
-            if datetime.now() - last_activity > app.permanent_session_lifetime:
-                # Logout user if the session has expired
-                session.pop('user_id', None)
-                return redirect(url_for('index'))
-        # Update last activity time
-        session['last_activity'] = datetime.now()
-
+# Routes
 @app.route('/')
 def index():
     return render_template('login.html')
@@ -55,7 +43,7 @@ def index():
 def success(name):
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    
+
     comments = Comment.query.all()
     return render_template('forum.html', name=name, comments=comments)
 
@@ -65,10 +53,12 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
+        # Check if the user exists in the database
         user = User.query.filter_by(username=username, password=password).first()
 
         if user:
-            session['user_id'] = user.id
+            session.permanent = True  # Enable session timeout
+            session['user_id'] = user.id  # Store user ID in session
             return redirect(url_for('success', name=username))
         else:
             return "Invalid credentials, please try again."
@@ -83,11 +73,12 @@ def add_comment():
     content = request.form['content']
     user_id = session['user_id']
 
+    # Add new comment to the database
     new_comment = Comment(user_id=user_id, content=content)
     db.session.add(new_comment)
     db.session.commit()
 
-    return redirect(url_for('success', name=session['user_id']))
+    return redirect(url_for('success', name=session.get('user_id')))
 
 @app.route('/logout')
 def logout():
