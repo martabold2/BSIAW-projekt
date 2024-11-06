@@ -46,5 +46,4 @@ jobs:
       with:
         app-name: 'WebAppka-nowe'  
         slot-name: 'production'
-        publish-profile: ${{ secrets.AZURE_CREDENTIALS }}
 
