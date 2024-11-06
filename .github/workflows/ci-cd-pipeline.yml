@@ -36,6 +36,16 @@ jobs:
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
+    - name: Run Snyk Test for Python Dependencies (requirements.txt)
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: snyk test --file=requirements.txt --package-manager=pip
+
+    - name: Run Snyk Test for Dockerfile (Container Security)
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: snyk test --docker --file=Dockerfile
+
     - name: 'Login via Azure CLI'
       uses: azure/login@v1
       with:
