@@ -44,7 +44,7 @@ jobs:
     - name: Run Snyk Test for Dockerfile (Container Security)
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      run: snyk test --docker --file=Dockerfile
+      run: snyk test --file=Dockerfile
 
     - name: 'Login via Azure CLI'
       uses: azure/login@v1
