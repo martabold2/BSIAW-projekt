@@ -13,6 +13,9 @@ jobs:
     - name: Check out the repository
       uses: actions/checkout@v2
 
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
     - name: Set up Python
       uses: actions/setup-python@v2
       with:
@@ -22,6 +25,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+
+    - name: Build Docker Image
+      run: docker build -t my-image-name:latest .
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
@@ -44,7 +50,7 @@ jobs:
     - name: Run Snyk Test for Dockerfile (Container Security)
       env:
         SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      run: snyk test --file=Dockerfile
+      run: snyk test --docker my-image-name:latest
 
     - name: 'Login via Azure CLI'
       uses: azure/login@v1
