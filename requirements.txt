@@ -1,3 +1,4 @@
 Flask>=2.2.0
 Flask-SQLAlchemy
 pyodbc
+werkzeug>=3.1.4 # not directly required, pinned by Snyk to avoid a vulnerability
